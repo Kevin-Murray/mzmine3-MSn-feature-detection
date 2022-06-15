@@ -34,7 +34,7 @@ public class MsnFeatureDetectionModule implements MZmineProcessingModule {
 
   private static final String MODULE_NAME = "MSn feature list builder";
   private static final String MODULE_DESCRIPTION =
-      "This module looks through the whole raw data for MSn scans and makes a list of chromatographic features using the precursor mass.";
+      "This module looks through the whole raw data for MSn scans and makes a list of chromatographic features using the full scan precursor mass.";
 
   @Override
   public @NotNull String getName() {
