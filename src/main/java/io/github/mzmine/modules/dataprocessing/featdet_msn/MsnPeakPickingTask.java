@@ -25,7 +25,6 @@ import io.github.mzmine.datamodel.features.ModularFeature;
 import io.github.mzmine.datamodel.features.ModularFeatureList;
 import io.github.mzmine.datamodel.features.ModularFeatureListRow;
 import io.github.mzmine.datamodel.features.SimpleFeatureListAppliedMethod;
-import io.github.mzmine.datamodel.msms.DDAMsMsInfo;
 import io.github.mzmine.parameters.ParameterSet;
 import io.github.mzmine.parameters.parametertypes.selectors.ScanSelection;
 import io.github.mzmine.parameters.parametertypes.tolerances.MZTolerance;
@@ -35,12 +34,11 @@ import io.github.mzmine.taskcontrol.TaskStatus;
 import io.github.mzmine.util.FeatureUtils;
 import io.github.mzmine.util.MemoryMapStorage;
 import java.time.Instant;
-import java.util.Date;
 import java.util.logging.Logger;
 import org.apache.commons.lang3.ArrayUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
+import io.github.mzmine.datamodel.impl.MSnInfoImpl;
 
 public class MsnPeakPickingTask extends AbstractTask {
 
@@ -48,11 +46,9 @@ public class MsnPeakPickingTask extends AbstractTask {
   private final MZmineProject project;
   private final RawDataFile dataFile;
   private final ScanSelection scanSelection;
-  private final int msLevel;
   private final MZTolerance mzTolerance;
   private final RTTolerance rtTolerance;
   private final ParameterSet parameterSet;
-  private final Scan[] scans;
   private final ModularFeatureList newFeatureList;
   private int processedScans, totalScans;
 
@@ -64,10 +60,8 @@ public class MsnPeakPickingTask extends AbstractTask {
     this.dataFile = dataFile;
 
     scanSelection = parameters.getParameter(MsnPeakPickerParameters.scanSelection).getValue();
-    msLevel = parameters.getParameter(MsnPeakPickerParameters.msLevel).getValue();
     mzTolerance = parameters.getParameter(MsnPeakPickerParameters.mzDifference).getValue();
     rtTolerance = parameters.getParameter(MsnPeakPickerParameters.rtTolerance).getValue();
-    scans = scanSelection.getMatchingScans(dataFile);
     newFeatureList = new ModularFeatureList(dataFile.getName() + " MSn features",
         getMemoryMapStorage(), dataFile);
     this.parameterSet = parameters;
@@ -97,15 +91,31 @@ public class MsnPeakPickingTask extends AbstractTask {
 
     int[] totalMSLevel = dataFile.getMSLevels();
 
-    // No MSn scan in datafile.
-    if (!ArrayUtils.contains(totalMSLevel, msLevel)) {
+    // MS Level not set in Scan Selection field
+    if (scanSelection.getMsLevel() == null) {
       setStatus(TaskStatus.ERROR);
-      final String msg = "No MS" + msLevel + " scans in " + dataFile.getName();
+      final String msg = "MS Level not set in Scan Selection Field.";
       setErrorMessage(msg);
       return;
     }
 
-    final Scan scans[] = scanSelection.getMatchingScans(dataFile);
+    // MS Level cannot be 1 in Scan Selection Field.
+    if (scanSelection.getMsLevel() == 1) {
+      setStatus(TaskStatus.ERROR);
+      final String msg = "MS Level cannot be 1. Please use LC-MS feature detection instead.";
+      setErrorMessage(msg);
+      return;
+    }
+
+    // No scans at MS Level in data file.
+    if (!ArrayUtils.contains(totalMSLevel, scanSelection.getMsLevel())) {
+      setStatus(TaskStatus.ERROR);
+      final String msg = "No MS" + scanSelection.getMsLevel() + " scans in " + dataFile.getName();
+      setErrorMessage(msg);
+      return;
+    }
+
+    final Scan[] scans = scanSelection.getMatchingScans(dataFile);
     totalScans = scans.length;
 
     // No scans in selection range.
@@ -116,9 +126,9 @@ public class MsnPeakPickingTask extends AbstractTask {
       return;
     }
 
-    /**
-     * Process each MS2 scan to find MSn scans through fragmentationScan tracing. If a MSn scan
-     * found, build simple modular feature for MS2 precursor in range.
+    /*
+      Process each MS2 scan to find MSn scans through fragmentationScan tracing. If a MSn scan
+      found, build simple modular feature for MS2 precursor in range.
      */
     for (Scan scan : scans) {
 
@@ -127,43 +137,33 @@ public class MsnPeakPickingTask extends AbstractTask {
         return;
       }
 
-      // MSn scans will be found through MS2 fragmentScan linking.
-      if (scan.getMSLevel() != 2) {
-        processedScans++;
+      double precursorMZ;
+
+      if (scan.getMSLevel() == 2) {
+        precursorMZ = scan.getPrecursorMz();
+      } else if (scan.getMsMsInfo() instanceof MSnInfoImpl msn) {
+        precursorMZ = msn.getMS2PrecursorMz();
+      } else {
+
+        /*
+          Conflicts can be encountered with Thermo RAW files if using old versions of MSConvert or
+          ThermoRawFileParser. MSn spectra are not detected correctly.
+         */
+        logger.warning(
+            () -> String.format("Scan#%d: Cannot find MS2 precursor scan", scan.getScanNumber()));
         continue;
       }
 
-      // Does scan possess MSn scans?
-      boolean validScan = false;
+      if (precursorMZ != 0) {
 
-      // If mslevel is 2, true by default.
-      if (scan.getMSLevel() == msLevel) {
-        validScan = true;
-      } else {
-
-        // Search for MSn Scans.
-        int[] scanList = getMSnScanNumbers(scan);
-
-        if (scanList != null) {
-          validScan = true;
-        }
-      }
-
-      // If valid, build simple feature for precursor.
-      if (validScan) {
-
-        // Get ranges.
         float scanRT = scan.getRetentionTime();
-        double precursorMZ =
-            scan.getMsMsInfo() != null && scan.getMsMsInfo() instanceof DDAMsMsInfo dda
-                ? dda.getIsolationMz() : 0d;
 
         Range<Float> rtRange = rtTolerance.getToleranceRange(scanRT);
         Range<Double> mzRange = mzTolerance.getToleranceRange(precursorMZ);
 
         // Build simple feature for precursor in ranges.
-        ModularFeature newFeature = FeatureUtils.buildSimpleModularFeature(newFeatureList, dataFile,
-            rtRange, mzRange);
+        ModularFeature newFeature = FeatureUtils
+            .buildSimpleModularFeature(newFeatureList, dataFile, rtRange, mzRange);
 
         // Add feature to feature list.
         if (newFeature != null) {
@@ -192,7 +192,7 @@ public class MsnPeakPickingTask extends AbstractTask {
         new SimpleFeatureListAppliedMethod(MsnFeatureDetectionModule.class, parameterSet,
             getModuleCallDate()));
 
-    // Add new feature list to the project
+    // Add new feature list to the project.
     project.addFeatureList(newFeatureList);
 
     logger.info(
@@ -200,60 +200,4 @@ public class MsnPeakPickingTask extends AbstractTask {
 
     setStatus(TaskStatus.FINISHED);
   }
-
-  /**
-   * Get scan numbers for input MS level.
-   *
-   * @param scan
-   * @return
-   */
-  private int[] getMSnScanNumbers(Scan scan) {
-
-    int[] allLevels = dataFile.getMSLevels();
-
-    // MS level not in data file.
-    if (!ArrayUtils.contains(allLevels, msLevel)) {
-      return null;
-    }
-
-//    if (scan.getPrecursorMZ() == 0) {
-//      return null;
-//    }
-
-    // int[] fragmentScanNumbers = scan.getFragmentScanNumbers();
-    //
-    // // Recursively search fragment scans for all scan numbers at MS level.
-    // if (fragmentScanNumbers != null) {
-    //
-    // // Return MSn fragment scans numbers if they exist.
-    // if (scan.getMSLevel() + 1 == msLevel) {
-    // return fragmentScanNumbers;
-    // } else {
-    //
-    // // Array for all MSn scan numbers.
-    // int[] msnScanNumbers = {};
-    //
-    // // Recursively search fragment scan chain.
-    // for (int fScanNum : fragmentScanNumbers) {
-    //
-    // Scan fragmentScan = dataFile.getScan(fScanNum);
-    //
-    // int[] foundScanNumbers = getMSnScanNumbers(fragmentScan);
-    //
-    // if (foundScanNumbers != null) {
-    //
-    // msnScanNumbers = ArrayUtils.addAll(msnScanNumbers, foundScanNumbers);
-    // } else {
-    // return null;
-    // }
-    // }
-    //
-    // return msnScanNumbers;
-    // }
-    // }
-
-    // No fragment scans found.
-    return null;
-  }
-
 }
