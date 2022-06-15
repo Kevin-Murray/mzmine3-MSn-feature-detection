@@ -30,29 +30,36 @@
         <h2>Description</h2>
 
         <p>
-            The MSn feature list builder detects MS1 precursor signals which possess an MSn scan.
-            The modules scans the raw data looking for MSn scans and builds a
+            The MSn feature list builder modules scans the raw data looking for MSn scans and builds a
             chromatographic feature for each MS1 precursor ion with a corresponding MSn scan.
         </p><p>
-            Precursor ion signals are detected through fragment scan tracing. Starting with all MS2
-            scans in range, MSn scans are recursively detected by tracing through each fragment scan
-            associated with each previous MS level. If a scan at the specified <i>MS Level</i> is detected,
-            the precursor m/z recorded in the MS2 scan is utilized to build a chromatogram feature.
+            Using the <i>MS Level</i> parameter input in the <i>Scan Selection</i> field, the specified MSn scans
+            are subset and the precursor MZ is collected for each scan. The precursor MZ value is
+            obtained from the corresponding MS2 scan. If the MS Level is greater than 2, the original
+            isolating MZ the MSn scans corresponding MS2 is used as the precursor MZ. The retention time
+            of the scan and precursor MZ are used to build a feature chromatogram for each detected
+            MSn scan.
         </p><p>
-            The feature list of precursor signals is constructed using the specified <i>mass and
-            retention time tolerances</i>. For each detected MSn-containing precursor signal, a targeted chromatogram
+            A feature list of precursor signals is constructed using the specified <i>mass and
+            retention time tolerances</i>. For each detected MSn-containing precursor signal, a feature chromatogram
             in the retention time range is built using all MS1 basepeaks within the mass range. 
         </p><p>
             If more than one peak is detected in the range or more precise peak integration
-            is required, the feature list may be deconvoluted via the <b>Chromatogram Deconvolution</b> tool.
+            is required, the feature list may be deconvoluted via the <b>Chromatogram resolving</b> tools.
+            If more than one MSn scan triggered on the same precursor ion, duplicate feature chromatograms
+            may be built. Use the <b>Feature list filtering</b> > <b>Duplicate feature filter</b> tool to
+            remove redundant results from the generated feature list.
+        </p><p>
+            Note - MSn files may not be correctly detected if Raw data files were converted using
+            older versions of MSConvert or ThermoRawFileParserer. If no MSn scans are detected in
+            the dataset, re-convert the using the latest version of these tools to avoid complications.
         </p>
 
         <h4>Method parameters</h4>
         <dl>
-            <dt>MS level</dt>
-            <dd>The MS level for precursor feature building. All fragment scans corresponding to this MS level
-                are detected and traced back to their MS1 precursor ion origin. <i>Do not set MS Level in the
-                Scan Selection field - all MSn levels are required to trace MSn precursor origins.</i></dd>
+            <dt>Scan Selection</dt>
+            <dd>Scan selection window for MSn feature detection. <b>MS Level must be set in Scan
+            Selection field.</b></dd>
             <dt>m/z Tolerance</dt>
             <dd>Precursor ion (MS1) mass tolerance for feature building. All MS1 base peaks within this mass range will be
             use to build a targeted chromatogram feature.</dd>
