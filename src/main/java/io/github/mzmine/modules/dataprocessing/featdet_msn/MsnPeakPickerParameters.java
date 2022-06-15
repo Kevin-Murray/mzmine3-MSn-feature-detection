@@ -19,7 +19,6 @@ package io.github.mzmine.modules.dataprocessing.featdet_msn;
 
 import io.github.mzmine.parameters.Parameter;
 import io.github.mzmine.parameters.impl.SimpleParameterSet;
-import io.github.mzmine.parameters.parametertypes.IntegerParameter;
 import io.github.mzmine.parameters.parametertypes.selectors.RawDataFilesParameter;
 import io.github.mzmine.parameters.parametertypes.selectors.ScanSelection;
 import io.github.mzmine.parameters.parametertypes.selectors.ScanSelectionParameter;
@@ -30,15 +29,11 @@ public class MsnPeakPickerParameters extends SimpleParameterSet {
 
     public static final RawDataFilesParameter dataFiles = new RawDataFilesParameter();
 
-    public static final ScanSelectionParameter scanSelection
-            = new ScanSelectionParameter(new ScanSelection());
-
     /**
-     * MS level to be matched to precursor for chromatogram building.
+     * Scan selection. MSn level must be set through MS Level field. Default MS3.
      */
-    public static final IntegerParameter msLevel = new IntegerParameter("MS level",
-            "MS level for precursor chromatogram building. Must be greater than 1.",
-            2, 2, 1000);
+    public static final ScanSelectionParameter scanSelection
+            = new ScanSelectionParameter(new ScanSelection(3));
 
     /**
      * MZ tolerance for precursor chromatogram building.
@@ -51,8 +46,6 @@ public class MsnPeakPickerParameters extends SimpleParameterSet {
     public static final RTToleranceParameter rtTolerance = new RTToleranceParameter();
 
     public MsnPeakPickerParameters() {
-        super(new Parameter[]{dataFiles, scanSelection, msLevel, mzDifference,
-            rtTolerance});
+        super(new Parameter[]{dataFiles, scanSelection, mzDifference,  rtTolerance});
     }
-
 }
