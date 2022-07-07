@@ -21,6 +21,9 @@ import com.google.common.collect.Range;
 import io.github.mzmine.datamodel.MZmineProject;
 import io.github.mzmine.datamodel.RawDataFile;
 import io.github.mzmine.datamodel.Scan;
+import io.github.mzmine.datamodel.data_access.EfficientDataAccess;
+import io.github.mzmine.datamodel.data_access.EfficientDataAccess.ScanDataType;
+import io.github.mzmine.datamodel.data_access.ScanDataAccess;
 import io.github.mzmine.datamodel.features.ModularFeature;
 import io.github.mzmine.datamodel.features.ModularFeatureList;
 import io.github.mzmine.datamodel.features.ModularFeatureListRow;
@@ -34,6 +37,8 @@ import io.github.mzmine.taskcontrol.TaskStatus;
 import io.github.mzmine.util.FeatureUtils;
 import io.github.mzmine.util.MemoryMapStorage;
 import java.time.Instant;
+import java.util.Arrays;
+import java.util.List;
 import java.util.logging.Logger;
 import org.apache.commons.lang3.ArrayUtils;
 import org.jetbrains.annotations.NotNull;
@@ -115,8 +120,9 @@ public class MsnPeakPickingTask extends AbstractTask {
       return;
     }
 
-    final Scan[] scans = scanSelection.getMatchingScans(dataFile);
-    totalScans = scans.length;
+    final ScanDataAccess scans = EfficientDataAccess.of(dataFile, ScanDataType.CENTROID, scanSelection);
+
+    totalScans = scans.getNumberOfScans();
 
     // No scans in selection range.
     if (totalScans == 0) {
@@ -130,12 +136,16 @@ public class MsnPeakPickingTask extends AbstractTask {
       Process each MS2 scan to find MSn scans through fragmentationScan tracing. If a MSn scan
       found, build simple modular feature for MS2 precursor in range.
      */
-    for (Scan scan : scans) {
+    while(scans.hasNextScan()){
 
       // Canceled?
       if (isCanceled()) {
         return;
       }
+
+      scans.nextScan();
+      Scan scan = scans.getCurrentScan();
+      assert scan != null;
 
       double precursorMZ;
 
@@ -186,6 +196,15 @@ public class MsnPeakPickingTask extends AbstractTask {
       setErrorMessage(msg);
       return;
     }
+
+    // Explicitly get scans for full scan (msLevel = 1).
+    List<Scan> scan;
+    if(scanSelection.getScanRTRange() == null){
+      scan = dataFile.getScanNumbers(1);
+    } else {
+      scan = Arrays.asList(dataFile.getScanNumbers(1, scanSelection.getScanRTRange()));
+    }
+    newFeatureList.setSelectedScans(dataFile, scan);
 
     dataFile.getAppliedMethods().forEach(m -> newFeatureList.getAppliedMethods().add(m));
     newFeatureList.getAppliedMethods().add(
