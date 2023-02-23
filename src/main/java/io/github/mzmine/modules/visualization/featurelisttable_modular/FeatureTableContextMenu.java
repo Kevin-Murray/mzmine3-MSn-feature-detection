@@ -43,6 +43,7 @@ import io.github.mzmine.datamodel.featuredata.IonTimeSeries;
 import io.github.mzmine.datamodel.features.Feature;
 import io.github.mzmine.datamodel.features.ModularFeature;
 import io.github.mzmine.datamodel.features.ModularFeatureListRow;
+import io.github.mzmine.datamodel.features.compoundannotations.FeatureAnnotation;
 import io.github.mzmine.datamodel.features.types.DataType;
 import io.github.mzmine.datamodel.features.types.DataTypes;
 import io.github.mzmine.datamodel.features.types.ImageType;
@@ -54,10 +55,10 @@ import io.github.mzmine.datamodel.features.types.graphicalnodes.LipidSpectrumCha
 import io.github.mzmine.datamodel.features.types.modifiers.AnnotationType;
 import io.github.mzmine.main.MZmineCore;
 import io.github.mzmine.modules.dataprocessing.featdet_manual.XICManualPickerModule;
+import io.github.mzmine.modules.dataprocessing.id_biotransformer.BioTransformerModule;
 import io.github.mzmine.modules.dataprocessing.id_formulaprediction.FormulaPredictionModule;
 import io.github.mzmine.modules.dataprocessing.id_lipididentification.lipidutils.MatchedLipid;
 import io.github.mzmine.modules.dataprocessing.id_nist.NistMsSearchModule;
-import io.github.mzmine.modules.dataprocessing.id_onlinecompounddb.OnlineDBSearchModule;
 import io.github.mzmine.modules.dataprocessing.id_spectral_library_match.SpectralLibrarySearchModule;
 import io.github.mzmine.modules.io.export_features_gnps.masst.GnpsMasstSubmitModule;
 import io.github.mzmine.modules.io.export_features_sirius.SiriusExportModule;
@@ -102,6 +103,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -219,8 +221,35 @@ public class FeatureTableContextMenu extends ContextMenu {
           .addAll(deleteTopAnnotation, clearAllAnnotations, new SeparatorMenuItem());
     });
 
+    final ConditionalMenuItem bioTransformerItem = new ConditionalMenuItem(
+        "Compute transformation products (BioTransformer 3)",
+        () -> getAnnotationForBioTransformerPrediction() != null);
+    bioTransformerItem.setOnAction(e -> {
+      final FeatureAnnotation annotation = getAnnotationForBioTransformerPrediction();
+      if (annotation != null) {
+        BioTransformerModule.runSingleRowPredection(selectedRow, annotation.getSmiles(),
+            Objects.requireNonNullElse(annotation.getCompoundName(), "UNKNOWN"));
+      }
+    });
+
     idsMenu.getItems()
-        .addAll(openCompoundIdUrl, copyIdsItem, pasteIdsItem, clearIdsItem, clearAnnotationsMenu);
+        .addAll(openCompoundIdUrl, copyIdsItem, pasteIdsItem, clearIdsItem, bioTransformerItem,
+            clearAnnotationsMenu);
+  }
+
+  /**
+   * @return A feature annotation to use for the bio transformer prediction.
+   */
+  @Nullable
+  private FeatureAnnotation getAnnotationForBioTransformerPrediction() {
+    List<? extends FeatureAnnotation> annotations = selectedRow.getSpectralLibraryMatches();
+    if (annotations.isEmpty()) {
+      annotations = selectedRow.getCompoundAnnotations();
+    }
+    if (annotations.isEmpty() || annotations.get(0).getSmiles() == null) {
+      return null;
+    }
+    return annotations.get(0);
   }
 
   private void initExportMenu() {
@@ -269,12 +298,6 @@ public class FeatureTableContextMenu extends ContextMenu {
   }
 
   private void initSearchMenu() {
-    final MenuItem onlineDbSearchItem = new ConditionalMenuItem("Online compound database search",
-        () -> selectedRows.size() == 1);
-    onlineDbSearchItem.setOnAction(
-        e -> OnlineDBSearchModule.showSingleRowIdentificationDialog(selectedRows.get(0),
-            Instant.now()));
-
     final MenuItem spectralDbSearchItem = new ConditionalMenuItem("Spectral library search",
         () -> selectedRows.size() >= 1);
     spectralDbSearchItem.setOnAction(
@@ -297,9 +320,8 @@ public class FeatureTableContextMenu extends ContextMenu {
     formulaPredictionItem.setOnAction(
         e -> FormulaPredictionModule.showSingleRowIdentificationDialog(selectedRows.get(0)));
 
-    searchMenu.getItems()
-        .addAll(onlineDbSearchItem, spectralDbSearchItem, nistSearchItem, new SeparatorMenuItem(),
-            formulaPredictionItem, new SeparatorMenuItem(), masstSearch);
+    searchMenu.getItems().addAll(spectralDbSearchItem, nistSearchItem, new SeparatorMenuItem(),
+        formulaPredictionItem, new SeparatorMenuItem(), masstSearch);
   }
 
   private void initShowMenu() {

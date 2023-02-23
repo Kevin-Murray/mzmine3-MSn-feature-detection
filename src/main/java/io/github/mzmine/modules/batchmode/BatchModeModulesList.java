@@ -65,6 +65,7 @@ import io.github.mzmine.modules.dataprocessing.filter_duplicatefilter.DuplicateF
 import io.github.mzmine.modules.dataprocessing.filter_extractscans.ExtractScansModule;
 import io.github.mzmine.modules.dataprocessing.filter_featurefilter.FeatureFilterModule;
 import io.github.mzmine.modules.dataprocessing.filter_groupms2.GroupMS2Module;
+import io.github.mzmine.modules.dataprocessing.filter_groupms2_refine.GroupedMs2RefinementModule;
 import io.github.mzmine.modules.dataprocessing.filter_interestingfeaturefinder.AnnotateIsomersModule;
 import io.github.mzmine.modules.dataprocessing.filter_isotopefinder.IsotopeFinderModule;
 import io.github.mzmine.modules.dataprocessing.filter_isotopegrouper.IsotopeGrouperModule;
@@ -101,7 +102,6 @@ import io.github.mzmine.modules.dataprocessing.id_lipididentification.LipidSearc
 import io.github.mzmine.modules.dataprocessing.id_localcsvsearch.LocalCSVDatabaseSearchModule;
 import io.github.mzmine.modules.dataprocessing.id_ms2search.Ms2SearchModule;
 import io.github.mzmine.modules.dataprocessing.id_nist.NistMsSearchModule;
-import io.github.mzmine.modules.dataprocessing.id_onlinecompounddb.OnlineDBSearchModule;
 import io.github.mzmine.modules.dataprocessing.id_precursordbsearch.PrecursorDBSearchModule;
 import io.github.mzmine.modules.dataprocessing.id_spectral_library_match.SpectralLibrarySearchModule;
 import io.github.mzmine.modules.dataprocessing.norm_linear.LinearNormalizerModule;
@@ -110,6 +110,7 @@ import io.github.mzmine.modules.dataprocessing.norm_standardcompound.StandardCom
 import io.github.mzmine.modules.io.deprecated_jmzml.MzMLImportModule;
 import io.github.mzmine.modules.io.export_features_csv.CSVExportModularModule;
 import io.github.mzmine.modules.io.export_features_csv_legacy.LegacyCSVExportModule;
+import io.github.mzmine.modules.io.export_features_featureML.FeatureMLExportModularModule;
 import io.github.mzmine.modules.io.export_features_gnps.fbmn.GnpsFbmnExportAndSubmitModule;
 import io.github.mzmine.modules.io.export_features_gnps.gc.GnpsGcExportAndSubmitModule;
 import io.github.mzmine.modules.io.export_features_metaboanalyst.MetaboAnalystExportModule;
@@ -141,7 +142,7 @@ import io.github.mzmine.modules.io.projectsave.ProjectSaveAsModule;
 import io.github.mzmine.modules.io.projectsave.ProjectSaveModule;
 import io.github.mzmine.modules.io.spectraldbsubmit.batch.LibraryBatchGenerationModule;
 import io.github.mzmine.modules.tools.clear_project.ClearProjectModule;
-import io.github.mzmine.modules.visualization.projectmetadata.ProjectMetadataImportModule;
+import io.github.mzmine.modules.visualization.projectmetadata.io.ProjectMetadataImportModule;
 import java.util.List;
 
 public class BatchModeModulesList {
@@ -304,6 +305,7 @@ public class BatchModeModulesList {
       ReferenceCCSCalibrationModule.class, //
       CliqueMSModule.class, //
       GroupMS2Module.class, //
+      GroupedMs2RefinementModule.class, //
       DiaMs2CorrModule.class, //
       FormulaPredictionFeatureListModule.class, //
       IsotopePeakScannerModule.class, //
@@ -311,7 +313,6 @@ public class BatchModeModulesList {
       LocalCSVDatabaseSearchModule.class, //
       Ms2SearchModule.class, //
       NistMsSearchModule.class, //
-      OnlineDBSearchModule.class, //
       PrecursorDBSearchModule.class, //
       SpectralLibrarySearchModule.class, //
 
@@ -334,7 +335,8 @@ public class BatchModeModulesList {
       CSVExportModularModule.class, //
       LegacyCSVExportModule.class, //
       LibraryAnalysisCSVExportModule.class, //
-      LibraryBatchGenerationModule.class //
+      LibraryBatchGenerationModule.class, //
+      FeatureMLExportModularModule.class
 
       /*
        * needed in batch mode?
